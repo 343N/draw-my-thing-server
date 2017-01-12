@@ -185,7 +185,7 @@ function clearGuesses() {
 }
 
 function newWord() {
-    currentWord = words[Math.floor(Math.random() * words.length)]
+    currentWord = words[Math.floor(Math.random() * words.length)].toLowerCase();
     console.log(currentWord);
     // console.log(words.length);
     io.to(currentDrawer.id).emit('drawerWord', currentWord);
