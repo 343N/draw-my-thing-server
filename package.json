@@ -1,0 +1,16 @@
+{
+  "name": "raintest-mp-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "343N",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.14.0",
+    "pem": "^1.9.4",
+    "socket.io": "^1.7.2"
+  }
+}
