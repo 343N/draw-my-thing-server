@@ -58,7 +58,6 @@ io.sockets.on('connection', function(socket) {
     socket.on('addPlayer', function(data) {
         data.name = data.name.replace(/<[^>]*>/g, "");
         players.push(data);
-        sendAlert(data.name + " has joined.");
         socket.broadcast.emit('addPlayer', data);
     });
 
@@ -98,13 +97,11 @@ io.sockets.on('connection', function(socket) {
         var guessedWord = (guessedString.indexOf(currentWord) !== -1);
         var guesser = idPlayer(socket.id);
         if (guessedWord && (typeof currentDrawer !== 'undefined') && (currentDrawer.id != socket.id) && (!guesser.correctlyGuessed)) {
-            var json = {
-                word: currentWord,
-                score: roundTimeLeft
-            }
-            io.to(socket.id).emit('correctGuess', currentWord);
             guesser.score += roundTimeLeft;
             guesser.correctlyGuessed = true;
+            io.emit('updateScoreboard', guesser);
+            io.to(socket.id).emit('correctGuess', currentWord);
+            // io.emit('updateScoreboard', json);
             console.log(remainingGuessers());
             sendServerMsg(' has guessed correctly, earning ' + roundTimeLeft + ' points!', guesser);
             if (remainingGuessers() == 0) endRound();
@@ -159,11 +156,7 @@ function newDrawer() {
     }
 }
 
-function showScores() {
-    players.forEach(function(e) {
-        sendServerMsg(e.name + ' score is ' + e.score);
-    });
-}
+
 
 function remainingGuessers() {
     var remainingGuessers = 0;
@@ -199,8 +192,8 @@ function newWord() {
 
 function newRound() {
     if (roundCount != 0) {
-        showScores()
-        sendChatMsg('Time out! The word was ' + currentWord);
+        sendChatMsg('Time out! The word was <span style="font-weight: bold">' + currentWord+ '. </span>');
+        sendAlert('Time out! The word was <span style="font-weight: bold">' + currentWord + "</span>.")
     }
     currentWord = "[-=];=-;]=-]'-[';]-';]'";
     setTimeout(function() {
@@ -266,7 +259,6 @@ setInterval(checkTimer, 1000);
 function resetGame() {
     roundCount = 0
     sendServerMsg('Game over!')
-    showScores();
     sendServerMsg('New game in 10 seconds.');
     setTimeout(newRound, 5000);
 }
@@ -296,7 +288,7 @@ function removeHTML(msg) {
 
 function sendServerMsg(msg, player) {
     if (typeof player === 'object') {
-        var message = `<span class="chatName" style="color: rgba(200,200,255,1);">` + player.name + `</span> <span style="color: rgba(150,150,255,1)">` + msg + "</span><BR><BR>";
+        var message = `<span class="chatName" style="color: rgba(200,200,255,1); font-weight: bold;">` + player.name + `</span> <span style="color: rgba(150,150,255,1)">` + msg + "</span><BR><BR>";
     } else var message = '<span style="color: rgba(200,200,255,1);">' + msg + "</span><BR><BR>";
     // console.log(message);
     chat += message;
