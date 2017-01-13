@@ -47,7 +47,13 @@ io.sockets.on('connection', function(socket) {
         if (data.length < 30) {
             var newName = data.replace(/<[^>]*>/g, "");
             io.to(socket.id).emit('joinGame', newName);
-        } else io.to(socket.id).emit('joinFailed');
+        }
+
+        if (data.length > 29){
+          io.to(socket.id).emit('joinFailed', "Name must be less than 30 characters long!");
+        } else if (data.length < 1){
+          io.to(socket.id).emit('joinFailed', "Name must have at least one character!");
+        }
     });
 
     socket.on('addPlayer', function(data) {
@@ -61,7 +67,7 @@ io.sockets.on('connection', function(socket) {
             var p = players[i];
             if (p.id === socket.id) {
                 io.emit('removePlayer', socket.id);
-                sendAlert(p.name + " has left.");
+                sendAlert(`<span style="font-weight: bold">` + p.name + "</span> has left.");
                 players.splice(i, 1);
             }
         }
@@ -91,7 +97,6 @@ io.sockets.on('connection', function(socket) {
             guesser.score += roundTimeLeft;
             guesser.correctlyGuessed = true;
             io.emit('updateScoreboard', guesser);
-
             io.to(socket.id).emit('correctGuess', currentWord);
             // io.emit('updateScoreboard', json);
             if (firstGuess) {
@@ -231,6 +236,7 @@ function clearScores(){
   players.forEach(function(e){
     e.score = 0;
   });
+  io.emit('clearScores');
 }
 
 
