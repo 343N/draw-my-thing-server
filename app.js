@@ -58,7 +58,7 @@ io.sockets.on('connection', function(socket) {
     socket.on('addPlayer', function(data) {
         data.name = data.name.replace(/<[^>]*>/g, "");
         players.push(data);
-        sendServerMsg(" has joined.", data);
+        sendAlert(data.name + " has joined.");
         socket.broadcast.emit('addPlayer', data);
     });
 
@@ -66,7 +66,7 @@ io.sockets.on('connection', function(socket) {
         for (var i = 0; i < players.length; i++) {
             if (players[i].id === socket.id) {
                 io.emit('removePlayer', socket.id);
-                sendServerMsg(" has left.", players[i]);
+                sendAlert(players[i].name + " has left.");
                 players.splice(i, 1);
             }
         }
@@ -219,6 +219,15 @@ function newRound() {
         // }
     }, 5000);
 
+}
+
+function sendAlert(msg, bg, fg){
+  data = {
+    msg: msg,
+    bg: bg,
+    fg: fg
+  }
+  io.emit('pushAlert', data);
 }
 
 function endRound() {
