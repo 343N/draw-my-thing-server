@@ -47,9 +47,7 @@ io.sockets.on('connection', function(socket) {
 
 
     socket.on('joinAttempt', function(data) {
-        // console.log(data);
         if (data.length < 3000) {
-            // console.log(data + ' is joining..')
             var newName = data.replace(/<[^>]*>/g, "");
             io.to(socket.id).emit('joinGame', newName);
         } else io.to(socket.id).emit('joinFailed');
@@ -73,8 +71,6 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('undoDrawing', function() {
         var p = idPlayer(socket.id);
-        // console.log(p);
-        // console.log(p.isDrawing);
         if (p.isDrawing && currentDrawing.length > 0) {
             undoDrawing();
             io.emit('undoDrawing');
@@ -82,14 +78,11 @@ io.sockets.on('connection', function(socket) {
     })
 
     socket.on('addToDrawing', function(data) {
-        // console.log(data);
         var player = idPlayer(socket.id);
-        // console.log(player.isDrawing + " :server \n" + data.player.isDrawing + " :client");
         if (player.isDrawing) {
             socket.broadcast.emit('addToDrawing', data);
             currentDrawing.push(data);
         }
-        // else console.log("Drawing by " + data.player.name + " denied!")
     })
 
     socket.on('chatMsg', function(data) {
@@ -100,15 +93,20 @@ io.sockets.on('connection', function(socket) {
             guesser.score += roundTimeLeft;
             guesser.correctlyGuessed = true;
             io.emit('updateScoreboard', guesser);
+
             io.to(socket.id).emit('correctGuess', currentWord);
             // io.emit('updateScoreboard', json);
-            console.log(remainingGuessers());
-            sendServerMsg(' has guessed correctly, earning ' + roundTimeLeft + ' points!', guesser);
-            if (remainingGuessers() == 0) endRound();
             if (firstGuess) {
-                roundTimeLeft = Math.floor(roundTimeLeft / 2);
+              if (players.length > 2){
+                currentDrawer.score += roundTimeLeft;
+                sendServerMsg(' has guessed correctly, earning ' + roundTimeLeft + ' points for himself and the drawer!', guesser);
+                io.emit('updateScoreboard', currentDrawer);
+              } else sendServerMsg(' has guessed correctly, earning ' + roundTimeLeft + ' points!', guesser);
+                roundTimeLeft = Math.floor(roundTimeLeft * (4/6));
                 firstGuess = false;
             }
+            if (remainingGuessers() == 0) endRound();
+
         }
 
         if (data.length < 301 && !guessedWord) {
@@ -128,34 +126,49 @@ io.sockets.on('connection', function(socket) {
 });
 
 function undoDrawing() {
-    console.log(currentDrawing.length);
     for (var i = currentDrawing.length - 1; i >= 0; i--) {
-      // console.log('looking for beginning at latest ' + i);
         if (currentDrawing[i].begin) {
             console.log(i);
-            // console.log(j);
             for (var j = currentDrawing.length - 1; j >= i; j--) {
                 currentDrawing.splice(j, 1);
             }
+            console.log('undoing drawing...');
             break;
-
         }
     }
 }
 
 function newDrawer() {
-    if (players.length > 0) {
-        var rand = Math.random() * players.length;
-        var num = Math.floor(rand);
-        console.log(num);
-        console.log(rand);
-        players[num].isDrawing = true;
-        io.emit('isDrawing', players[num]);
-        sendServerMsg(' is drawing!', players[num]);
-        return players[num];
-    }
+    var drawers = getHasntDrawn();
+    var rand = Math.random() * drawers.length;
+    var num = Math.floor(rand);
+    var p = drawers[num];
+    p.isDrawing = true;
+    p.hasDrawn = true;
+    io.emit('isDrawing', p);
+    sendServerMsg(' is drawing!', p);
+    return p;
+
 }
 
+function getHasntDrawn(){
+  var poolOfDrawers = [];
+  players.forEach(function(e){
+    if (e.hasDrawn == false) poolOfDrawers.push(e);
+  });
+  if (poolOfDrawers.length === 0){
+    resetHasDrawn();
+    poolOfDrawers = players;
+  }
+  return poolOfDrawers;
+}
+
+
+function resetHasDrawn() {
+    players.forEach(function(e) {
+        e.hasDrawn = false;
+    })
+}
 
 
 function remainingGuessers() {
@@ -163,8 +176,6 @@ function remainingGuessers() {
     players.forEach(function(e) {
         if (e.correctlyGuessed === false && !e.isDrawing) {
             remainingGuessers++;
-            console.log(e.name);
-            console.log(e.id);
 
         }
     })
@@ -180,11 +191,18 @@ function clearGuesses() {
 function newWord() {
     currentWord = words[Math.floor(Math.random() * words.length)].toLowerCase();
     console.log(currentWord);
-    // console.log(words.length);
-    io.to(currentDrawer.id).emit('drawerWord', currentWord);
+    var json = {
+        word: currentWord,
+        count: roundCount
+    }
+    io.to(currentDrawer.id).emit('drawerWord', json);
     players.forEach(function(p) {
         if (p != currentDrawer) {
-            io.to(p.id).emit('guesserWord', currentWord.length);
+            var json = {
+                length: currentWord.length,
+                count: roundCount
+            }
+            io.to(p.id).emit('guesserWord', json);
         }
     })
 }
@@ -192,7 +210,7 @@ function newWord() {
 
 function newRound() {
     if (roundCount != 0) {
-        sendChatMsg('Time out! The word was <span style="font-weight: bold">' + currentWord+ '. </span>');
+        sendChatMsg('Time out! The word was <span style="font-weight: bold">' + currentWord + '. </span>');
         sendAlert('Time out! The word was <span style="font-weight: bold">' + currentWord + "</span>.")
     }
     currentWord = "[-=];=-;]=-]'-[';]-';]'";
@@ -206,21 +224,25 @@ function newRound() {
         firstGuess = true;
         countTimer = true;
         roundTimeLeft = 90;
-        // startTime = new Date();
-        // console.log(currentWord);
-        // sendChatMsg()
         // }
     }, 5000);
 
 }
 
-function sendAlert(msg, bg, fg){
-  data = {
-    msg: msg,
-    bg: bg,
-    fg: fg
-  }
-  io.emit('pushAlert', data);
+function clearScores(){
+  players.forEach(function(e){
+    e.score = 0;
+  });
+}
+
+
+function sendAlert(msg, bg, fg) {
+    data = {
+        msg: msg,
+        bg: bg,
+        fg: fg
+    }
+    io.emit('pushAlert', data);
 }
 
 function endRound() {
@@ -228,7 +250,6 @@ function endRound() {
 }
 
 function checkTimer() {
-    // console.log('checking timer.')
     if (countTimer) {
         if (roundTimeLeft > 0 && players.length > 1) {
             roundTimeLeft--;
@@ -239,15 +260,13 @@ function checkTimer() {
             sendServerMsg('Need more players!');
             roundTimeLeft = -1;
             roundCount = 10;
-            // countTimer = true;
-            // resetGame();
-            // newRound();
         } else if (roundTimeLeft < 1 && roundCount >= roundLimit) {
             resetGame();
+            // clearDrawing();
             countTimer = false;
-            console.log('game over, restarting.\n')
+            console.log('game over, restarting')
         } else if (roundTimeLeft < 1) {
-            console.log('round over, new round starting.\n')
+            console.log('round over, new round starting.')
             newRound();
             countTimer = false;
         }
@@ -258,6 +277,9 @@ setInterval(checkTimer, 1000);
 
 function resetGame() {
     roundCount = 0
+    roundLimit = players.length * 3;
+    clearScores();
+    resetHasDrawn();
     sendServerMsg('Game over!')
     sendServerMsg('New game in 10 seconds.');
     setTimeout(newRound, 5000);
@@ -290,18 +312,15 @@ function sendServerMsg(msg, player) {
     if (typeof player === 'object') {
         var message = `<span class="chatName" style="color: rgba(200,200,255,1); font-weight: bold;">` + player.name + `</span> <span style="color: rgba(150,150,255,1)">` + msg + "</span><BR><BR>";
     } else var message = '<span style="color: rgba(200,200,255,1);">' + msg + "</span><BR><BR>";
-    // console.log(message);
     chat += message;
     io.emit("updateChat", message);
 }
 
 function sendChatMsg(msg, player) {
-    // console.log(msg);
     if (typeof player === 'object') {
         var newMsg = removeHTML(msg);
         var message = "<span class='chatName'>" + player.name + "</span>" + newMsg + "<BR><BR>";
     } else var message = msg + "<BR><BR>";
-    // console.log(message);
     chat += message;
     io.emit("updateChat", message);
 }
