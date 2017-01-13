@@ -34,20 +34,17 @@ currentWord = words[Math.floor(Math.random() * words.length)];
 app.use(express.static(__dirname + "/../draw-my-thing-remake/"));
 console.log(__dirname);
 io.sockets.on('connection', function(socket) {
-
-
-
     var connectData = {
         players: players,
         drawing: currentDrawing
     }
+
+
     io.to(socket.id).emit('connected', connectData);
 
 
-
-
     socket.on('joinAttempt', function(data) {
-        if (data.length < 3000) {
+        if (data.length < 30) {
             var newName = data.replace(/<[^>]*>/g, "");
             io.to(socket.id).emit('joinGame', newName);
         } else io.to(socket.id).emit('joinFailed');
@@ -61,9 +58,10 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('disconnect', function() {
         for (var i = 0; i < players.length; i++) {
-            if (players[i].id === socket.id) {
+            var p = players[i];
+            if (p.id === socket.id) {
                 io.emit('removePlayer', socket.id);
-                sendAlert(players[i].name + " has left.");
+                sendAlert(p.name + " has left.");
                 players.splice(i, 1);
             }
         }
