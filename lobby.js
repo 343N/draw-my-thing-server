@@ -1,7 +1,7 @@
 var Lobby = function(name, playerLimit, password) {
     _this = this;
     this.name = name;
-    this.id = Date.now() + Math.floor(100 * Math.random());
+    this.id = Date.now() + Math.floor(10000 * Math.random());
     this.playerLimit = playerLimit || 999;
     this.password = password || "";
     this.passworded = (this.password.length > 0);
@@ -142,11 +142,13 @@ var Lobby = function(name, playerLimit, password) {
         },
 
         this.sendChatMsg = function(msg, player) {
+          console.log(player.name);
             if (typeof player === 'object') {
                 var newMsg = removeHTML(msg);
                 var message = "<span class='chatName'>" + player.name + "</span>" + newMsg + "<BR><BR>";
             } else var message = msg + "<BR><BR>";
             this.chat += message;
+            console.log('sending chat msg ' + message);
             this.sendToLobby("updateChat", message);
         },
 
@@ -212,9 +214,12 @@ var Lobby = function(name, playerLimit, password) {
         },
 
         this.receiveChatMsg = function(data) {
+          console.log(data);
+          var guessedWord = false;
+          if (!this.isMainLobby){
             var guessedString = data.msg.toLowerCase();
-            var guessedWord = (guessedString.indexOf(this.currentWord) !== -1);
-            var guesser = l.idPlayer(data.id);
+            guessedWord = (guessedString.indexOf(this.currentWord) !== -1);
+            var guesser = this.idPlayer(data.id);
             if (guessedWord && (typeof this.currentDrawer !== 'undefined') && (this.currentDrawer.id != data.id) && (!guesser.correctlyGuessed)) {
                 guesser.score += roundTimeLeft;
                 guesser.correctlyGuessed = true;
@@ -233,14 +238,16 @@ var Lobby = function(name, playerLimit, password) {
                 if (this.remainingGuessers() == 0) this.endRound();
 
             }
+          }
 
-            if (data.length < 301 && !guessedWord) {
+            if (data.msg.length < 301 && !guessedWord) {
                 var p;
-                players.forEach(function(e) {
-                    if (e.id === socket.id) p = e;
+                // console.log(data.msg + ' can be sent')
+                this.players.forEach(function(e) {
+                    if (e.id === data.id) p = e;
                 });
                 if (p != "undefined") {
-                    this.sendChatMsg(": " + data, p);
+                    this.sendChatMsg(": " + data.msg, p);
                 }
             }
             if (data.length > 300) io.to(socket.id).emit('chatTooLong');

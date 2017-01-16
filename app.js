@@ -56,7 +56,7 @@ io.sockets.on('connection', function(socket) {
 
         if (data.name.length > 29) {
             io.to(socket.id).emit('joinFailed', "Name must be less than 30 characters long!");
-        } else if (data.name.length < 1) {
+        } else if (data.name.split('').length < 1) {
             io.to(socket.id).emit('joinFailed', "Name must have at least one character!");
         }
     });
@@ -102,9 +102,9 @@ io.sockets.on('connection', function(socket) {
 
     });
 
-    socket.on('sendLobby', function(l){
-      io.to(socket.id).emit('receiveData', lobbies);
-    })
+    // socket.on('sendLobby', function(l){
+    //   io.to(socket.id).emit('receiveData', lobbies);
+    // })
 });
 
 lobbies.push(new Lobby('The General Lobby'))
@@ -119,16 +119,16 @@ lobbies[3].isPersistent = true;
 // lobbies[0].name = "The General Lobby";
 
 function addToLobby(l, p) {
-    var player = p;
+    // var player = p;
     // player.currentLobby = l;
     // console.log(p.id);
-    io.to(player.id).emit('joinLobby', l);
-    if (l.isMainLobby) io.emit('allLobbyInfo', lobbyInfo());
+    io.to(p.id).emit('joinLobby', l);
+    if (l.isMainLobby) io.to(p.id).emit('allLobbyInfo', lobbyInfo());
     console.log(l.name +' is a main lobby? ' + l.isMainLobby);
     console.log(p.name + " has joined " + l.name);
-    var ass = lobbyFromSocket(p.id);
+    if (typeof(l) === "number") l = lobbyFromSocket(p.id);
     console.log(l);
-    l.addPlayer(player);
+    l.addPlayer(p);
     // console.
     // console.log("LOBBYFROMSOCKET");
     // console.log(ass + ' from ' + p.name + ' - ' + p.id);
@@ -136,12 +136,18 @@ function addToLobby(l, p) {
 }
 
 function idLobby(id) {
+    var l;
     lobbies.forEach(function(e) {
-        if (typeof(id) == 'string')
-            if (id === e.id) return e;
+        // console.log(typeof(id));
+        // console.log(e.id);
+        if (typeof(id) == 'number')
+            // console.log(dicks);
+            if (id === e.id) l = e;
         if (typeof(id) == 'object')
-            if (id.id === e.id) return e;
+            if (id.id === e.id) l = e;
     });
+    console.log(l);
+    return l;
 }
 
 function lobbyFromSocket(id) {
