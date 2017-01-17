@@ -1,7 +1,7 @@
 var Lobby = function(name, playerLimit, password) {
     _this = this;
     this.name = name;
-    this.id = Date.now() + Math.floor(10000 * Math.random());
+    this.id = Date.now();
     this.playerLimit = playerLimit || 999;
     this.password = password || "";
     this.passworded = (this.password.length > 0);
@@ -22,6 +22,8 @@ var Lobby = function(name, playerLimit, password) {
 
     this.undoDrawing = function(p) {
             var p = this.idPlayer(p);
+            console.log(p.name + "is drawing... " + p.isDrawing);
+            console.log(this.currentDrawing.length + ' - length of drawing');
             if (p.isDrawing && this.currentDrawing.length > 0) {
                 for (var i = this.currentDrawing.length - 1; i >= 0; i--) {
                     if (this.currentDrawing[i].begin) {
@@ -37,24 +39,16 @@ var Lobby = function(name, playerLimit, password) {
             }
         },
 
-        this.addToDrawing = function(p) {
-            var player = idPlayer(p);
+        this.addToDrawing = function(p, data) {
+            var player = this.idPlayer(p);
             if (player.isDrawing) {
-                this.sendToLobby('addToDrawing', data);
-                currentDrawing.push(data);
+                this.sendToLobbyExcept(player.id, 'addToDrawing', data);
+                this.currentDrawing.push(data);
             }
         },
 
 
-        this.resetGame = function() {
-            this.roundCount = 0
-            this.roundLimit = this.players.length * 3;
-            this.clearScores();
-            this.resetHasDrawn();
-            this.sendServerMsg('Game over!')
-            this.sendServerMsg('New game in 10 seconds.');
-            setTimeout(this.newRound, 5000);
-        },
+
 
         this.newDrawer = function() {
             var drawers = this.getHasntDrawn();
@@ -76,7 +70,7 @@ var Lobby = function(name, playerLimit, password) {
             });
             if (poolOfDrawers.length === 0) {
                 this.resetHasDrawn();
-                poolOfDrawers = players;
+                poolOfDrawers = this.players;
             }
             return poolOfDrawers;
         },
@@ -98,12 +92,10 @@ var Lobby = function(name, playerLimit, password) {
         },
 
         this.playerLeave = function(p) {
-            for (var i = this.players.length - 1; i >= 0; i--){
-              var e = this.players[i];
+            for (var i = this.players.length - 1; i >= 0; i--) {
+                var e = this.players[i];
                 if (e.id === p) {
                     this.players.splice(i, 1);
-                    console.log(this);
-                    console.log(_this.name);
                     console.log(this.name);
                     console.log('kicking ' + this.players.name + ' from ' + this.name);
                     this.sendToLobby('removePlayer', e.id);
@@ -133,16 +125,18 @@ var Lobby = function(name, playerLimit, password) {
             if (data) {
                 this.players.forEach(function(e) {
                     if (id !== e.id) io.to(e.id).emit(message, data);
+                    // if (id === e.id) console.log('sending to all but ' + e.name);
                 })
             } else {
                 this.players.forEach(function(e) {
                     if (id !== e.id) io.to(e.id).emit(message);
+                    // if (id === e.id) console.log('sending to all but ' + e.name);
                 })
             }
         },
 
         this.sendChatMsg = function(msg, player) {
-          console.log(player.name);
+            // console.log(player.name);
             if (typeof player === 'object') {
                 var newMsg = removeHTML(msg);
                 var message = "<span class='chatName'>" + player.name + "</span>" + newMsg + "<BR><BR>";
@@ -194,51 +188,33 @@ var Lobby = function(name, playerLimit, password) {
             this.players.push(p);
         },
 
-        this.newWord = function() {
-            this.currentWord = words[Math.floor(Math.random() * words.length)].toLowerCase();
-            console.log(this.currentWord);
-            var json = {
-                word: this.currentWord,
-                count: this.roundCount
-            }
-            io.to(this.currentDrawer.id).emit('drawerWord', json);
-            this.players.forEach(function(p) {
-                if (p != currentDrawer) {
-                    var json = {
-                        length: this.currentWord.length,
-                        count: this.roundCount
-                    }
-                    io.to(p.id).emit('guesserWord', json);
-                }
-            })
-        },
 
         this.receiveChatMsg = function(data) {
-          console.log(data);
-          var guessedWord = false;
-          if (!this.isMainLobby){
-            var guessedString = data.msg.toLowerCase();
-            guessedWord = (guessedString.indexOf(this.currentWord) !== -1);
-            var guesser = this.idPlayer(data.id);
-            if (guessedWord && (typeof this.currentDrawer !== 'undefined') && (this.currentDrawer.id != data.id) && (!guesser.correctlyGuessed)) {
-                guesser.score += roundTimeLeft;
-                guesser.correctlyGuessed = true;
-                this.sendToLobby('updateScoreboard', guesser);
-                io.to(socket.id).emit('correctGuess', this.currentWord);
-                // io.emit('updateScoreboard', json);
-                if (this.firstGuess) {
-                    if (this.players.length > 2) {
-                        this.currentDrawer.score += this.roundTimeLeft;
-                        this.sendServerMsg(' has guessed correctly, earning ' + roundTimeLeft + ' points for himself and the drawer!', guesser);
-                        io.emit('updateScoreboard', currentDrawer);
-                    } else this.sendServerMsg(' has guessed correctly, earning ' + roundTimeLeft + ' points!', guesser);
-                    this.roundTimeLeft = Math.floor(this.roundTimeLeft * (4 / 6));
-                    this.firstGuess = false;
-                }
-                if (this.remainingGuessers() == 0) this.endRound();
+            console.log(data);
+            var guessedWord = false;
+            if (!this.isMainLobby) {
+                var guessedString = data.msg.toLowerCase();
+                guessedWord = (guessedString.indexOf(this.currentWord) !== -1);
+                var guesser = this.idPlayer(data.id);
+                if (guessedWord && (typeof this.currentDrawer !== 'undefined') && (this.currentDrawer.id != data.id) && (!guesser.correctlyGuessed)) {
+                    guesser.score += this.roundTimeLeft;
+                    guesser.correctlyGuessed = true;
+                    this.sendToLobby('updateScoreboard', guesser);
+                    io.to(socket.id).emit('correctGuess', this.currentWord);
+                    // io.emit('updateScoreboard', json);
+                    if (this.firstGuess) {
+                        if (this.players.length > 2) {
+                            this.currentDrawer.score += this.roundTimeLeft;
+                            this.sendServerMsg( ' has guessed correctly, earning ' + this.roundTimeLeft + ' points for himself and the drawer!', guesser);
+                            io.emit('updateScoreboard', currentDrawer);
+                        } else this.sendServerMsg(' has guessed correctly, earning ' + this.roundTimeLeft + ' points!', guesser);
+                        this.roundTimeLeft = Math.floor(this.roundTimeLeft * (4 / 6));
+                        this.firstGuess = false;
+                    }
+                    if (this.remainingGuessers() == 0) this.endRound();
 
+                }
             }
-          }
 
             if (data.msg.length < 301 && !guessedWord) {
                 var p;
@@ -247,6 +223,7 @@ var Lobby = function(name, playerLimit, password) {
                     if (e.id === data.id) p = e;
                 });
                 if (p != "undefined") {
+                    console.log(this.name + ' is not undefined');
                     this.sendChatMsg(": " + data.msg, p);
                 }
             }
@@ -254,28 +231,6 @@ var Lobby = function(name, playerLimit, password) {
         },
 
 
-
-
-        this.newRound = function() {
-            if (this.roundCount != 0) {
-                this.sendChatMsg('Time out! The word was <span style="font-weight: bold">' + this.currentWord + '. </span>');
-                this.sendAlert('Time out! The word was <span style="font-weight: bold">' + this.currentWord + "</span>.")
-            }
-            this.currentWord = "[-=];=-;]=-]'-[';]-';]'";
-            setTimeout(function() {
-                // if (players.length > 1) {
-                this.clearDrawing();
-                this.clearGuesses();
-                this.currentDrawer = this.newDrawer();
-                this.roundCount++;
-                newWord();
-                this.firstGuess = true;
-                this.countTimer = true;
-                this.roundTimeLeft = 90;
-                // }
-            }, 5000);
-
-        },
 
         this.clearScores = function() {
             this.players.forEach(function(e) {
@@ -289,36 +244,23 @@ var Lobby = function(name, playerLimit, password) {
         },
 
         this.idPlayer = function(id) {
-
-            players.forEach(function(e) {
-                if (typeof(id) == 'string')
-                    if (id === e.id) return e;
-                if (typeof(id) == 'object')
-                    if (id.id === e.id) return e;
-            })
-        },
-
-        this.checkTimer = function() {
-            if (this.countTimer) {
-                if (this.roundTimeLeft > 0 && this.players.length > 1) {
-                    this.roundTimeLeft--;
-                    // console.log('round proceeding, ' + roundTimeLeft + ' seconds left.\n');
-                    this.sendToLobby('updateTimer', this.roundTimeLeft);
-                } else if (this.players.length < 2) {
-                    console.log('not enough players\n')
-                    this.sendServerMsg('Need more players!');
-                    this.roundTimeLeft = -1;
-                    this.roundCount = 10;
-                } else if (this.roundTimeLeft < 1 && this.roundCount >= this.roundLimit) {
-                    this.resetGame();
-                    // clearDrawing();
-                    this.countTimer = false;
-                    // console.log('game over, restarting')
-                } else if (this.roundTimeLeft < 1) {
-                    // console.log('round over, new round starting.')
-                    this.newRound();
-                    this.countTimer = false;
+            var p;
+            // console.log(typeof(id));
+            this.players.forEach(function(e) {
+                // console.log(typeof(id) + ` is the IDs type`);
+                if (typeof(id) === 'string') {
+                    // console.log('is a string!');
+                    if (id === e.id) p = e;
                 }
-            }
+
+                if (typeof(id) === 'object') {
+                    // console.log('is an object!');
+                    if (id.id === e.id) p = e;
+                }
+            });
+            // console.log(p);
+            return p;
         }
+
+
 }
