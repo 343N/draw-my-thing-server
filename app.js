@@ -27,7 +27,7 @@ var io = socket(server);
 fs.readFile('data.txt', 'utf8', function(err, data) {
     words = data.split(/\r?\n/);
     words.splice(words.length - 1, 1);
-    console.log(words);
+    // console.log(words);
 })
 
 currentWord = words[Math.floor(Math.random() * words.length)];
@@ -73,14 +73,14 @@ io.sockets.on('connection', function(socket) {
         var l = lobbyFromSocket(id);
         // console.log(l + "\n DISCONNECT");
         if (l) {
-            console.log('l is defined');
+            // console.log('l is defined');
             l.playerLeave(id);
         }
     });
 
     socket.on('undoDrawing', function(data) {
         var l = idLobby(data);
-        console.log('undoing drawing from '  + l.name)
+        // console.log('undoing drawing from '  + l.name)
         l.undoDrawing(socket.id);
     })
 
@@ -104,18 +104,25 @@ io.sockets.on('connection', function(socket) {
     });
 
     socket.on('joinLobbyAttempt', function(data) {
+        console.log(data);
         var l = idLobby(data.l);
+        console.log(l.players);
         var leaving = idLobby(data.leaving);
-        if (!l.passworded && l.players.length < l.playerLimit) {
+        console.log(leaving.players);
+        if (l && !l.passworded && l.players.length < l.playerLimit) {
             var p = leaving.idPlayer(data.p);
+            // console.log('checking if P is a person');
+            // console.log(p);
             if (p) {
                 leaving.playerLeave(p.id);
-                console.log(l.name + " " + p);
                 addToLobby(l, p);
+                // console.log(p.name + " leaving " + leaving.name + " to join " + l.name);
+                // console.log(leaving.players);;
             } else {
                 var p = playerFromSocket(data.p);
                 var l = lobbyFromSocket(data.p);
-                console.log(`somethings wrong with ` + p.name + ". removing from " + l.name + '.')
+                // console.log(l);
+                // console.log(`somethings wrong with ` + p.name + ". removing from " + leaving.name + '.')
                 l.playerLeave(p.id);
                 addToLobby(lobbies[0], p)
                 pushAlert(p.id, 'Oops, something went wrong!<br>Returning you to the main lobby.', "#B71C1C");
@@ -160,8 +167,8 @@ function addToLobby(l, p) {
     if (l.isMainLobby) io.to(p.id).emit('allLobbyInfo', lobbyInfo());
     if (typeof(l) === "number") l = lobbyFromSocket(p.id);
     l.addPlayer(p);
-    console.log(l.name + ' is a main lobby? ' + l.isMainLobby);
-    console.log(p.name + " has joined " + l.name);
+    // console.log(l.name + ' is a main lobby? ' + l.isMainLobby);
+    // console.log(p.name + " has joined " + l.name);
     // console.log(l);
     // console.
     // console.log("LOBBYFROMSOCKET");
@@ -236,7 +243,7 @@ function lobbyNewRound(l){
   // console.log(_this);
   console.log(l.roundCount);
   if (l.roundCount != 0) {
-    console.log(l.name + ' is not undefined');
+    // console.log(l.name + ' is not undefined');
       l.sendChatMsg('Time out! The word was <span style="font-weight: bold">' + l.currentWord + '. </span>');
       l.sendAlert('Time out! The word was <span style="font-weight: bold">' + l.currentWord + "</span>.")
   }
@@ -258,7 +265,7 @@ function lobbyNewRound(l){
 
 function lobbyNewWord(l) {
     l.currentWord = words[Math.floor(Math.random() * words.length)].toLowerCase();
-    console.log(l.currentWord);
+    // console.log(l.currentWord);
     var json = {
         word: l.currentWord,
         count: l.roundCount

@@ -95,13 +95,14 @@ var Lobby = function(name, playerLimit, password) {
             for (var i = this.players.length - 1; i >= 0; i--) {
                 var e = this.players[i];
                 if (e.id === p) {
+                    console.log('kicking ' + e.name + ' from ' + this.name);
+                    // console.log(e.name);
                     this.players.splice(i, 1);
-                    console.log(this.name);
-                    console.log('kicking ' + this.players.name + ' from ' + this.name);
                     this.sendToLobby('removePlayer', e.id);
                     this.sendAlert(`<span style="font-weight: bold">` + e.name + "</span> has left.");
                 }
             }
+            // console.log(this.players);
         },
 
         // this.playerJoin(p){
@@ -143,6 +144,8 @@ var Lobby = function(name, playerLimit, password) {
             } else var message = msg + "<BR><BR>";
             this.chat += message;
             console.log('sending chat msg ' + message);
+            console.log(this.players);
+            console.log(this.id);
             this.sendToLobby("updateChat", message);
         },
 
@@ -186,11 +189,12 @@ var Lobby = function(name, playerLimit, password) {
         this.addPlayer = function(p) {
             this.sendToLobby('addPlayer', p);
             this.players.push(p);
+            console.log(this.players);
         },
 
 
         this.receiveChatMsg = function(data) {
-            console.log(data);
+            // console.log(data);
             var guessedWord = false;
             if (!this.isMainLobby) {
                 var guessedString = data.msg.toLowerCase();
@@ -205,7 +209,7 @@ var Lobby = function(name, playerLimit, password) {
                     if (this.firstGuess) {
                         if (this.players.length > 2) {
                             this.currentDrawer.score += this.roundTimeLeft;
-                            this.sendServerMsg( ' has guessed correctly, earning ' + this.roundTimeLeft + ' points for himself and the drawer!', guesser);
+                            this.sendServerMsg(' has guessed correctly, earning ' + this.roundTimeLeft + ' points for himself and the drawer!', guesser);
                             io.emit('updateScoreboard', currentDrawer);
                         } else this.sendServerMsg(' has guessed correctly, earning ' + this.roundTimeLeft + ' points!', guesser);
                         this.roundTimeLeft = Math.floor(this.roundTimeLeft * (4 / 6));
@@ -246,6 +250,7 @@ var Lobby = function(name, playerLimit, password) {
         this.idPlayer = function(id) {
             var p;
             // console.log(typeof(id));
+            // console.log(this.players);
             this.players.forEach(function(e) {
                 // console.log(typeof(id) + ` is the IDs type`);
                 if (typeof(id) === 'string') {
