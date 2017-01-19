@@ -75,6 +75,7 @@ io.sockets.on('connection', function(socket) {
         if (l) {
             // console.log('l is defined');
             l.playerLeave(id);
+            updateLobbyInfo(l);
         }
     });
 
@@ -116,6 +117,8 @@ io.sockets.on('connection', function(socket) {
             if (p) {
                 leaving.playerLeave(p.id);
                 addToLobby(l, p);
+                updateLobbyInfo(l)
+                updateLobbyInfo(leaving);
                 // console.log(p.name + " leaving " + leaving.name + " to join " + l.name);
                 // console.log(leaving.players);;
             } else {
@@ -126,6 +129,8 @@ io.sockets.on('connection', function(socket) {
                 l.playerLeave(p.id);
                 addToLobby(lobbies[0], p)
                 pushAlert(p.id, 'Oops, something went wrong!<br>Returning you to the main lobby.', "#B71C1C");
+                // updateLobbyInfo(l)
+                updateLobbyInfo(l);
             }
         }
     });
@@ -207,7 +212,8 @@ function checkTimer(l){
       if (l.roundTimeLeft > 0 && l.players.length > 1) {
           l.roundTimeLeft--;
           // console.log('round proceeding, ' + roundTimeLeft + ' seconds left.\n');
-          l.sendToLobby('updateTimer', l.roundTimeLeft);
+          console.log(l.roundTimeLeft);
+          l.sendToLobby('updateTimer', l.roundTimeLeft + '');
       } else if (l.players.length < 2) {
           // console.log('not enough players\n')
           l.sendServerMsg('Need more players!');
@@ -222,6 +228,7 @@ function checkTimer(l){
       } else if (l.roundTimeLeft < 1) {
           // console.log('round over, new round starting.')
           lobbyNewRound(l);
+          l.roundTimeLeft = 0;
           l.countTimer = false;
       }
   }
@@ -249,7 +256,7 @@ function lobbyNewRound(l){
   }
   l.currentWord = "[-=];=-;]=-]'-[';]-';]'";
   setTimeout(function() {
-      // if (players.length > 1) {
+      if (l.players.length > 1) {
       l.clearDrawing();
       l.clearGuesses();
       l.currentDrawer = l.newDrawer();
@@ -258,9 +265,21 @@ function lobbyNewRound(l){
       l.firstGuess = true;
       l.countTimer = true;
       l.roundTimeLeft = 90;
+    } else l.countTimer = true;
       // }
   }, 5000);
 
+}
+
+function updateLobbyInfo(l){
+  var json = {
+    name: l.name,
+    playerLimit: l.playerLimit,
+    playerCount: l.players.length,
+    passworded: l.passworded,
+    id: l.id
+  }
+  lobbies[0].sendToLobby('updateLobbyInfo', json);
 }
 
 function lobbyNewWord(l) {
@@ -348,10 +367,18 @@ function removeEmptyLobbies() {
     lobbies.forEach(function(l, index) {
         if ((!l.isPersistent && !l.isMainLobby) &&
             l.players.length === 0) {
-            lobbies[0].sendToLobby('removeLobby', l.id);
+              var essentials = {
+                  name: l.name,
+                  playerLimit: l.playerLimit,
+                  playerCount: l.players.length,
+                  passworded: l.passworded,
+                  id: l.id
+              }
+            lobbies[0].sendToLobby('removeLobby', essentials);
             lobbies.splice(index, 1);
         }
     });
+    // lobbies.push(new Lobby('hello!'));
 }
 
 
