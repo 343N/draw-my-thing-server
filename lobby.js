@@ -1,13 +1,14 @@
-var Lobby = function(name, playerLimit, password) {
+var Lobby = function(name, playerLimit, password, creator) {
         _this = this;
         this.name = name;
         this.id = Date.now();
         this.playerLimit = playerLimit || 999;
-        this.isPlayerLimited = (this.playerLimit != 999);
+        this.isPlayerLimited = (this.playerLimit < 999);
         this.password = password || "";
         this.passworded = (this.password.length > 0);
         this.isMainLobby = false;
         this.isPersistent = false;
+        this.creator = creator || "";
 
         this.currentDrawing = [];
         this.players = [];
