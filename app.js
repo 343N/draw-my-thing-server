@@ -115,7 +115,7 @@ io.sockets.on('connection', function(socket) {
       console.log(data.l);
         var l = idLobby(data.l);
         console.log(l);
-        if (l.password == data.password) {
+        if (l && l.password == data.password) {
             var p = lobbies[0].idPlayer(socket.id);
             if (p) {
                 joinPasswordedLobby(l, p)
@@ -319,7 +319,7 @@ function addToLobby(l, p) {
         currentDrawing: l.currentDrawing,
         isMainLobby: l.isMainLobby
     }
-
+    if (json.currentWord) json.currentWord = l.currentWord.length;
     io.to(p.id).emit('joinLobby', json);
     if (l.isMainLobby) io.to(p.id).emit('allLobbyInfo', lobbyInfo());
     if (typeof(l) === "number") l = lobbyFromSocket(p.id);
@@ -362,6 +362,8 @@ function checkTimer(l) {
         } else if (l.players.length < 2) {
             // console.log('not enough players\n')
             l.sendServerMsg('Need more players!');
+            l.roundCount = l.roundLimit;
+            l.roundTimeLeft = 0;
             // l.roundTimeLeft = 5;
             // l.roundCount = 10;
             // lobbyResetGame(l);
@@ -381,7 +383,7 @@ function checkTimer(l) {
 
 function lobbyResetGame(l) {
     l.roundCount = 0
-    l.roundLimit = l.players.length;
+    l.roundLimit = l.players.length * 2;
     l.clearScores();
     l.resetHasDrawn();
     l.sendServerMsg('Game over!')
