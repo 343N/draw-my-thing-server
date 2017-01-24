@@ -110,6 +110,12 @@ var Lobby = function(name, playerLimit, password, creator) {
             // this.playerJoin(p){
             // }
 
+            this.hasDrawer = function(){
+              for (var i = 0; i < this.players.length; i++){
+                if (this.players[i].isDrawing) return true;
+              }
+              return false;
+            }
 
 
             this.sendToLobby = function(message, data) {

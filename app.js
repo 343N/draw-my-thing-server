@@ -75,6 +75,7 @@ io.sockets.on('connection', function(socket) {
         if (l) {
             // console.log('l is defined');
             l.playerLeave(id);
+            if (l.remainingGuessers() == 0) l.endRound();
             updateLobbyInfo(l);
         }
     });
@@ -207,6 +208,7 @@ function joinLobbyAttempt(data) {
         if (p) {
             if (!l.passworded) {
                 leaving.playerLeave(p.id);
+                if (leaving.remainingGuessers() == 0 && !leaving.isMainLobby) leaving.endRound();
                 addToLobby(l, p);
                 updateLobbyInfo(l)
                 updateLobbyInfo(leaving);
@@ -222,6 +224,7 @@ function joinLobbyAttempt(data) {
             // console.log(l);
             // console.log(`somethings wrong with ` + p.name + ". removing from " + leaving.name + '.')
             l.playerLeave(p.id);
+            if (l.remainingGuessers() == 0 && !l.isMainLobby) l.endRound();
             addToLobby(lobbies[0], p)
             pushAlert(p.id, 'Oops, something went wrong!<br>Returning you to the main lobby.', "#B71C1C");
             // updateLobbyInfo(l)
@@ -359,6 +362,9 @@ function checkTimer(l) {
             // console.log('round proceeding, ' + roundTimeLeft + ' seconds left.\n');
             // console.log(l.roundTimeLeft);
             l.sendToLobby('updateTimer', l.roundTimeLeft + '');
+            if (!l.hasDrawer()) {
+              l.endRound();
+            }
         } else if (l.players.length < 2) {
             // console.log('not enough players\n')
             l.sendServerMsg('Need more players!');
@@ -368,6 +374,7 @@ function checkTimer(l) {
             // l.roundCount = 10;
             // lobbyResetGame(l);
         } else if (l.roundTimeLeft < 1 && l.roundCount >= l.roundLimit) {
+
             lobbyResetGame(l);
             // clearDrawing();
             l.countTimer = false;
@@ -382,6 +389,8 @@ function checkTimer(l) {
 }
 
 function lobbyResetGame(l) {
+    l.sendChatMsg('Time out! The word was <span style="font-weight: bold">' + l.currentWord + '. </span>');
+    l.sendAlert('Time out! The word was <span style="font-weight: bold">' + l.currentWord + "</span>.");
     l.roundCount = 0
     l.roundLimit = l.players.length * 2;
     l.clearScores();
